@@ -1,0 +1,291 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf8">
+  <title>5e Game</title>
+</head>
+<body>
+  <canvas id="canvas" width="600px" height="600px"></canvas>
+  <script type="text/javascript" src="raphael.js"></script>
+  <script type="text/javascript">
+    var paper = Raphael(0, 0, 600, 600);
+    
+    function randomBetween (start, end) {
+      return start + Math.floor(Math.random() * (end - start + 1));
+    };
+    
+    function percentTrue (percent) {
+      return Math.random() < percent;
+    };
+    
+    var toInt = Math.floor;
+    
+    function enumerate () {
+      var obj = {};
+      for (var i = 0, l = arguments.length; i < l; i++) {
+        obj[arguments[i]] = i;
+      };
+      return Object.freeze(obj);
+    }
+    
+    function lerp (x0, y0, x1, y1) {
+      return function (n) {
+        return ((y1 - y0) / (x1 - x0)) * n;
+      };
+    }
+    
+    var Array2D = function (w, h) {
+      Array.call(this, w);
+      for (var i = 0; i < w; i++) {
+        this[i] = new Array(h);
+      }
+      this.w = w;
+      this.h = h;
+    };
+    Array2D.prototype = new Array;
+    Array2D.prototype.forEach = function (cb) {
+      for (var i = 0; i < this.w; i++) {
+        for (var j = 0; j < this.h; j++) {
+          cb(this[i][j], i, j);
+        }
+      }
+    };
+    Array2D.prototype.set = function (x, y, val) {
+      if (x < 0) x = this.w - Math.abs(x % this.w);
+      else if (x >= this.w) x %= this.w;
+      if (y < 0) y = this.h - Math.abs(y % this.h);
+      else if (y >= this.h) y %= this.h;
+      this[x][y] = val;
+    };
+    Array2D.prototype.get = function (x, y) {
+      if (x < 0) x = this.w - x % this.w;
+      else if (x >= this.w) x %= this.w;
+      if (y < 0) y = this.h - y % this.h;
+      else if (y >= this.h) y %= this.h;
+      return this[x][y];
+    };
+    Array2D.prototype.setArea = function (x, y, w, h, cb) {
+      for (var i = 0; i < w; i++) {
+        for (var j = 0; j < h; j++) {
+          this[i][j] = cb();
+        }
+      }
+    };
+    
+    function pick (list, n) {
+      var l = list.length;
+      if (n < 1) throw new Error('Cannot pick 0 elements from list.');
+      else if (l < 1) throw new Error('Cannot pick from empty list.');
+      else if (n === 1) return list[Math.floor(Math.random() * l)];
+      else {
+        var picked = [];
+        for (var i = 0; i < l; i++)
+          picked.push(list[Math.floor(Math.random() * l)]);
+        return picked;
+      }
+    };
+    
+    
+    var DIRECTION = enumerate(
+      'ALL',
+      'N',
+      'NE',
+      'E',
+      'SE',
+      'S',
+      'SW',
+      'W',
+      'NW'
+    );
+    
+    var Bloblet = function (options) {
+      this.direction = options.direction;
+      this.depth = options.depth;
+      switch (options.direction) {
+        case DIRECTION.N:
+          this.x = options.x;
+          this.y = options.y - 1;
+          break;
+        case DIRECTION.NE:
+          this.x = options.x + 1;
+          this.y = options.y - 1;
+          break;
+        case DIRECTION.E:
+          this.x = options.x + 1;
+          this.y = options.y;
+          break;
+        case DIRECTION.SE:
+          this.x = options.x + 1;
+          this.y = options.y + 1;
+          break;
+        case DIRECTION.S:
+          this.x = options.x;
+          this.y = options.y + 1;
+          break;
+        case DIRECTION.SW:
+          this.x = options.x - 1;
+          this.y = options.y + 1;
+          break;
+        case DIRECTION.W:
+          this.x = options.x - 1;
+          this.y = options.y;
+          break;
+        case DIRECTION.NW:
+          this.x = options.x - 1;
+          this.y = options.y - 1;
+          break;
+        default:
+          this.x = options.x;
+          this.y = options.y;
+          break;
+      }
+    };
+    Bloblet.prototype = new Object;
+    
+    var createBlob = function (options) {
+      var data = new Array2D(options.maxHeight, options.maxWidth);
+      var x = options.x;
+      var y = options.y;
+      var radius = options.radius;
+      var lerpFunc = lerp(0, 0, radius, 0.5);
+      
+      var workQueue = [new Bloblet({
+        direction: DIRECTION.ALL,
+        depth: 1,
+        x: x,
+        y: y
+      })];
+      var node;
+      var coords;
+      var newDepth;
+      var lerpRatio;
+      
+      function addWork (direction) {
+        workQueue.push(new Bloblet({
+          x: x,
+          y: y,
+          direction: direction,
+          depth: newDepth
+        }));
+      }
+      
+      function willExpand () {
+        return percentTrue(0.5 - lerpRatio);
+      }
+      
+      while (workQueue[0] !== undefined) {
+        bloblet = workQueue.pop(0);
+        console.log(bloblet.x, bloblet.y);
+        data.set(bloblet.x, bloblet.y, bloblet);
+        x = bloblet.x;
+        y = bloblet.y;
+        newDepth = bloblet.depth + 1;
+        lerpRatio = lerpFunc(newDepth);
+        switch (bloblet.direction) {
+          case DIRECTION.N:
+            if (willExpand())
+              addWork(DIRECTION.NW);
+            if (willExpand())
+              addWork(DIRECTION.N);
+            if (willExpand())
+              addWork(DIRECTION.NE);
+            break;
+          case DIRECTION.NE:
+            if (willExpand())
+              addWork(DIRECTION.N);
+            if (willExpand())
+              addWork(DIRECTION.NE);
+            if (willExpand())
+              addWork(DIRECTION.E);
+            break;
+          case DIRECTION.E:
+            if (willExpand())
+              addWork(DIRECTION.NE);
+            if (willExpand())
+              addWork(DIRECTION.E);
+            if (willExpand())
+              addWork(DIRECTION.SE);
+            break;
+          case DIRECTION.SE:
+            if (willExpand())
+              addWork(DIRECTION.E);
+            if (willExpand())
+              addWork(DIRECTION.SE);
+            if (willExpand())
+              addWork(DIRECTION.S);
+            break;
+          case DIRECTION.S:
+            if (willExpand())
+              addWork(DIRECTION.SE);
+            if (willExpand())
+              addWork(DIRECTION.S);
+            if (willExpand())
+              addWork(DIRECTION.SW);
+            break;
+          case DIRECTION.SW:
+            if (willExpand())
+              addWork(DIRECTION.S);
+            if (willExpand())
+              addWork(DIRECTION.SW);
+            if (willExpand())
+              addWork(DIRECTION.W);
+            break;
+          case DIRECTION.W:
+            if (willExpand())
+              addWork(DIRECTION.SW);
+            if (willExpand())
+              addWork(DIRECTION.W);
+            if (willExpand())
+              addWork(DIRECTION.NW);
+            break;
+          case DIRECTION.NW:
+            if (willExpand())
+              addWork(DIRECTION.W);
+            if (willExpand())
+              addWork(DIRECTION.NW);
+            if (willExpand())
+              addWork(DIRECTION.N);
+            break;
+          case DIRECTION.ALL:
+            if (willExpand())
+              addWork(DIRECTION.N);
+            if (willExpand())
+              addWork(DIRECTION.NE);
+            if (willExpand())
+              addWork(DIRECTION.E);
+            if (willExpand())
+              addWork(DIRECTION.SE);
+            if (willExpand())
+              addWork(DIRECTION.S);
+            if (willExpand())
+              addWork(DIRECTION.SW);
+            if (willExpand())
+              addWork(DIRECTION.W);
+            if (willExpand())
+              addWork(DIRECTION.NW);
+            break;
+        }
+      }
+      
+      return data;
+    };
+    
+    paper.rect(0, 0, 600, 600);
+    
+    createBlob({
+      x: 24,
+      y: 24,
+      maxWidth: 50,
+      maxHeight: 50,
+      radius: 50
+    }).forEach(function (bloblet, x, y) {
+      if (bloblet !== undefined) {
+        paper.rect(x * 12, y * 12, 12, 12)
+        .attr({
+          fill: (x === 24 && y === 24) ? 'red': 'green'
+        });
+      }
+    });
+  </script>
+</body>
+</html>
