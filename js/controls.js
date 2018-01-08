@@ -3,14 +3,19 @@
   gridSizeControl.addEventListener('input', function (e) {
     
   });
-
+  
+  var blobRadiusControl = document.getElementById('blobRadiusControl');
+  blobRadiusControl.addEventListener('input', function (e) {
+    
+  });
+  
   document.getElementById('genWorld').addEventListener('click', function () {
     Engine.map = createBlob({
-      x: 24,
-      y: 24,
+      x: Math.floor(gridSizeControl.valueAsNumber / 2),
+      y: Math.floor(gridSizeControl.valueAsNumber / 2),
       maxWidth: gridSizeControl.valueAsNumber,
       maxHeight: gridSizeControl.valueAsNumber,
-      radius: 50
+      radius: blobRadiusControl.valueAsNumber
     });
     return false;
   });

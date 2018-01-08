@@ -205,18 +205,17 @@ Engine.map = [];
 var drawMap = function () {
   var w = Engine.map.w;
   var h = Engine.map.h;
+  var halfW = Math.floor(w / 2);
+  var halfH = Math.floor(h / 2);
   Engine.map.forEach(function (bloblet, x, y) {
     if (bloblet !== undefined) {
       paper.rect(x * (width / w), y * (height / h), width / w, height / h)
       .attr({
-        fill: (x === 24 && y === 24) ? 'red': 'green'
+        fill: (x === halfW && y === halfH) ? 'red': 'green'
       });
     }
   });
 };
-
-var worldWidth = 50;
-var worldHeight = 50;
 
 (function () {
   var time;
